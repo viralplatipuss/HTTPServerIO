@@ -12,6 +12,10 @@ public final class HTTPServerIOHandler: BaseIOHandler<HTTPServerIO>, HTTPServerR
         }
     }
     
+    deinit {
+        try? group.syncShutdownGracefully()
+    }
+    
     // MARK: - HTTPServerResponder
     
     public func respond(to req: HTTPRequest, on worker: Worker) -> Future<HTTPResponse> {
@@ -29,16 +33,13 @@ public final class HTTPServerIOHandler: BaseIOHandler<HTTPServerIO>, HTTPServerR
     
     // MARK: - Private
     
+    private let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
     private var nextRequestId = UInt(0)
     private var responsePromiseForId = [UInt: Promise<HTTPResponse>]()
     private var server: HTTPServer?
     
     private func startServer(hostname: String, port: UInt) {
         guard server == nil else { return }
-        
-        let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-        // Make sure to shutdown the group when the application exits.
-        defer { try! group.syncShutdownGracefully() }
         
         server = try! HTTPServer.start(
             hostname: hostname,
